@@ -10,28 +10,26 @@ import pytest
 from _pytest import fixtures
 from _pytest import nodes
 
+event_loop_key = pytest.StashKey[asyncio.AbstractEventLoop]()
+
 
 @pytest.hookimpl(specname="pytest_fixture_setup", tryfirst=True)
 def pytest_fixture_setup_wrap_async(
     fixturedef: pytest.FixtureDef, request: pytest.FixtureRequest
 ) -> None:
-    _wrap_async_fixture(fixturedef)
-
-
-def _wrap_async_fixture(fixturedef: pytest.FixtureDef) -> None:
     """Wraps the fixture function of an async fixture in a synchronous function."""
+    event_loop = request.config.stash[event_loop_key]
     if inspect.isasyncgenfunction(fixturedef.func):
-        _wrap_asyncgen_fixture(fixturedef)
+        _wrap_asyncgen_fixture(fixturedef, event_loop)
     elif inspect.iscoroutinefunction(fixturedef.func):
-        _wrap_asyncfunc_fixture(fixturedef)
+        _wrap_asyncfunc_fixture(fixturedef, event_loop)
 
 
-def _wrap_asyncgen_fixture(fixturedef: pytest.FixtureDef) -> None:
+def _wrap_asyncgen_fixture(fixturedef: pytest.FixtureDef, event_loop) -> None:
     fixtureFunc = fixturedef.func
 
     @functools.wraps(fixtureFunc)
     def _asyncgen_fixture_wrapper(**kwargs: Any):
-        event_loop = asyncio.new_event_loop()
         gen_obj = fixtureFunc(**kwargs)
 
         async def setup():
@@ -55,13 +53,11 @@ def _wrap_asyncgen_fixture(fixturedef: pytest.FixtureDef) -> None:
     fixturedef.func = _asyncgen_fixture_wrapper  # type: ignore[misc]
 
 
-def _wrap_asyncfunc_fixture(fixturedef: pytest.FixtureDef) -> None:
+def _wrap_asyncfunc_fixture(fixturedef: pytest.FixtureDef, event_loop) -> None:
     fixtureFunc = fixturedef.func
 
     @functools.wraps(fixtureFunc)
     def _async_fixture_wrapper(**kwargs: Dict[str, Any]):
-        event_loop = asyncio.get_event_loop()
-
         async def setup():
             res = await fixtureFunc(**kwargs)
             return res
@@ -76,6 +72,8 @@ fixture_cache_key = pytest.StashKey[Dict[str, Optional[Sequence[pytest.FixtureDe
 
 @pytest.hookimpl(specname="pytest_sessionstart", trylast=True)
 def pytest_sessionstart_cache_fixture(session: pytest.Session):
+    event_loop = session.config.stash[event_loop_key] = asyncio.new_event_loop()
+    session.config.add_cleanup(event_loop.close)
     # This function in general utilized some private properties.
 
     # This is to solve two problem:

@@ -1,21 +1,21 @@
-=========================
-pytest-asyncio-concurrent
-=========================
+==============================
+pytest-asyncio-concurrent-fork
+==============================
 
-.. image:: https://img.shields.io/pypi/v/pytest-asyncio-concurrent.svg
-    :target: https://pypi.org/project/pytest-asyncio-concurrent
+This is a temporary pytest compatibility fork of `pytest-asyncio-concurrent <https://github.com/czl9707/pytest-asyncio-concurrent>`_. The intent is to return to upstream once the fixes land there.
+
+The fork registers concurrent tests as active during fixture setup and execution, as required by pytest 9.1. Async fixtures and concurrent tests share one session-owned event loop rather than relying on an implicit current loop.
+
+.. image:: https://img.shields.io/pypi/v/pytest-asyncio-concurrent-fork.svg
+    :target: https://pypi.org/project/pytest-asyncio-concurrent-fork
     :alt: PyPI version
 
-.. image:: https://img.shields.io/pypi/pyversions/pytest-asyncio-concurrent.svg
-    :target: https://pypi.org/project/pytest-asyncio-concurrent
+.. image:: https://img.shields.io/pypi/pyversions/pytest-asyncio-concurrent-fork.svg
+    :target: https://pypi.org/project/pytest-asyncio-concurrent-fork
     :alt: Python versions
 
-.. image:: https://codecov.io/github/czl9707/pytest-asyncio-concurrent/graph/badge.svg?token=ENWHQBWQML 
-    :target: https://codecov.io/gh/czl9707/pytest-asyncio-concurrent
-    :alt: Testing Coverage
-
-.. image:: https://github.com/czl9707/pytest-asyncio-concurrent/actions/workflows/main.yml/badge.svg
-    :target: https://github.com/czl9707/pytest-asyncio-concurrent/actions/workflows/main.yml
+.. image:: https://github.com/AnswerDotAI/pytest-asyncio-concurrent/actions/workflows/main.yml/badge.svg
+    :target: https://github.com/AnswerDotAI/pytest-asyncio-concurrent/actions/workflows/main.yml
     :alt: See Build Status on GitHub Actions
 
 
@@ -59,9 +59,19 @@ The plugin control tests concurrency by putting them into different groups.
 Installation
 ------------
 
-You can install "pytest-asyncio-concurrent" via `pip` from `PyPI`::
+Replace the upstream distribution with the fork; do not install both, since they provide the same Python package and pytest plugin::
 
-    $ pip install pytest-asyncio-concurrent
+    $ pip uninstall pytest-asyncio-concurrent
+    $ pip install pytest-asyncio-concurrent-fork
+
+The marker and plugin names are unchanged. With pytest 8.4 or later, projects can load only the plugins they use:
+
+.. code-block:: toml
+
+    [tool.pytest.ini_options]
+    addopts = "--disable-plugin-autoload -p asyncio-concurrent"
+
+Use plain ``@pytest.fixture`` for async fixtures owned by this plugin. If also using ``pytest-asyncio``, explicitly load ``-p asyncio`` and use its strict mode so it does not take ownership of concurrent tests.
 
 
 How this work?

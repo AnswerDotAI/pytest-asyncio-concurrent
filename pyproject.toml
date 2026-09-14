@@ -5,8 +5,8 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pytest-asyncio-concurrent"
-description = "Pytest plugin to execute python async tests concurrently."
+name = "pytest-asyncio-concurrent-fork"
+description = "Temporary pytest compatibility fork of pytest-asyncio-concurrent."
 version = "0.5.2"
 readme = "README.rst"
 requires-python = ">=3.8"
@@ -40,9 +40,9 @@ optional-dependencies.testing = [
     "coverage>=7.6.0",
 ]
 [project.urls]
-Repository = "https://github.com/czl9707/pytest-asyncio-concurrent"
-Homepage = "https://github.com/czl9707/pytest-asyncio-concurrent"
-Issues = "https://github.com/czl9707/pytest-asyncio-concurrent/issues"
+Repository = "https://github.com/AnswerDotAI/pytest-asyncio-concurrent"
+Homepage = "https://github.com/AnswerDotAI/pytest-asyncio-concurrent"
+Issues = "https://github.com/AnswerDotAI/pytest-asyncio-concurrent/issues"
 
 [project.entry-points.pytest11]
 asyncio-concurrent = "pytest_asyncio_concurrent.plugin"
@@ -63,8 +63,7 @@ line-length = 100
 max-line-length = 100
 
 [tool.pytest.ini_options]
-asyncio_mode = "strict"
-asyncio_default_fixture_loop_scope = "function"
+addopts = "--disable-plugin-autoload"
 
 [tool.coverage.run]
 source = [

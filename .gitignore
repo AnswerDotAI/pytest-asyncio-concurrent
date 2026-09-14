@@ -1,3 +1,8 @@
+.sesskey
+frontend/
+o200k.pkl
+tags
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

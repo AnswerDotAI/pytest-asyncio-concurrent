@@ -24,6 +24,7 @@ import pluggy
 import pytest
 from _pytest import timing
 from _pytest import outcomes
+from .fixture_async import event_loop_key
 
 from .grouping import (
     AsyncioConcurrentGroup,
@@ -211,7 +212,7 @@ def pytest_runtest_protocol_async_group(
         )
 
     item_passed_setup: List[AsyncioConcurrentGroupMember] = []
-    loop = asyncio.get_event_loop()
+    loop = group.config.stash[event_loop_key]
 
     for childFunc in group.children:
         childFunc.ihook.pytest_runtest_logstart(
@@ -222,8 +223,10 @@ def pytest_runtest_protocol_async_group(
         if report.passed:
             item_passed_setup.append(childFunc)
 
-    coros = [_call_runtest_async(childFunc) for childFunc in item_passed_setup]
-    callinfos = loop.run_until_complete(asyncio.gather(*coros))
+    async def run_tests():
+        return await asyncio.gather(*[_call_runtest_async(child) for child in item_passed_setup])
+
+    callinfos = loop.run_until_complete(run_tests())
 
     for childFunc, callinfo in zip(item_passed_setup, callinfos):
         report = childFunc.ihook.pytest_runtest_makereport(item=childFunc, call=callinfo)
@@ -263,15 +266,15 @@ def _setup_child(item: AsyncioConcurrentGroupMember) -> Callable[[], None]:
         - Push all nodes onto `SetupState`, start from furthest.
         - The node on the face will be `AsyncioConcurrentGroup`.
     - Setup individual tests.
-        - Individual tests will not be pushed to SetupState.
-        - If non function scoped, register finalizers on parent node in `SetupState`
-        - If function scoped, register finalizers on its group.
+        - Register each active test in SetupState with its group's finalizer list.
+        - Non-function-scoped finalizers remain on their parent node.
     """
 
     def inner() -> None:
         if not item.group.has_setup:
             item.ihook.pytest_runtest_setup_async_group(item=item.group)
 
+        item.session._setupstate.stack[item] = (item.group.children_finalizer[item], None)
         item.config.pluginmanager.subset_hook_caller(
             "pytest_runtest_setup", [item.config.pluginmanager.get_plugin("runner")]
         )(item=item)
@@ -345,8 +348,7 @@ async def pytest_runtest_call_async(item: pytest.Function) -> object:
 @pytest.hookimpl(specname="pytest_runtest_setup_async_group")
 def pytest_runtest_setup_async_group(item: AsyncioConcurrentGroup) -> None:
     """
-    AsyncioConcurrentGroup is the only node got push to 'SetupState' in pytest.
-    AsyncioConcurrentGroupMember are registered under the hood of their group.
+    Set up the group's ancestors before registering its concurrent members.
     """
     assert not item.has_setup
     item.ihook.pytest_runtest_setup(item=item)

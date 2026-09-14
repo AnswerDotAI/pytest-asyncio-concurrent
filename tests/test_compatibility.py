@@ -30,5 +30,5 @@ def test_compatibility_with_pytest_asyncio(pytester: pytest.Pytester):
         """
     )
 
-    result = pytester.runpytest()
+    result = pytester.runpytest("-p", "asyncio")
     result.assert_outcomes(passed=2)

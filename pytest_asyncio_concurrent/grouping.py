@@ -73,6 +73,7 @@ class AsyncioConcurrentGroup(pytest.Function):
         self.children_finalizer[item] = []
 
     def teardown_child(self, item: "AsyncioConcurrentGroupMember") -> None:
+        item.session._setupstate.stack.pop(item, None)
         finalizers = self.children_finalizer.pop(item)
         exceptions = []
 
@@ -98,8 +99,7 @@ class AsyncioConcurrentGroup(pytest.Function):
 class AsyncioConcurrentGroupMember(pytest.Function):
     """
     A light wrapper around Function, representing a child of AsyncioConcurrentGroup.
-    The member won't be pushed to 'SetupState' to avoid assertion error. So instead of
-    registering finalizers to the node, it redirecting addfinalizer to its group.
+    The group registers active members in SetupState and tears them down individually.
     """
 
     group: AsyncioConcurrentGroup
@@ -120,10 +120,6 @@ class AsyncioConcurrentGroupMember(pytest.Function):
 
         member._inner = item
         return member
-
-    def addfinalizer(self, fin: Callable[[], Any]) -> None:
-        assert callable(fin)
-        self.group.children_finalizer[self].append(fin)
 
     @staticmethod
     def _refresh_function_scoped_fixture(item: pytest.Function):
